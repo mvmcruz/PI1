@@ -3,8 +3,14 @@ from flask import request
 from flask_restful import Resource, reqparse
 from datetime import datetime
 import json
-
+def investimento(consumo):
+    return float(consumo)*60.00
+def carbono(consumo):
+    return float(consumo)*0.086
+def temporetorno(consumo,te,tusd,investimento):
+    return int(investimento/((float(consumo)*float(te)) + (float(consumo)*float(tusd))))
 class OrcamentoController(Resource):
+    @classmethod
     def get(self):
         lista_orcamento = []
         lorcamento=Orcamentos.buscar()
@@ -33,12 +39,20 @@ class OrcamentoController(Resource):
         lorcamentos = json.loads(request.data)
         try:
             for vorcamento in lorcamentos:
+                if vorcamento['ORC_ID']=='':
+                    idorcamento=Orcamentos.maiorid()+1
+                else:
+                    idorcamento=vorcamento['ORC_ID']
+                print(idorcamento)
                 now = datetime.now()
+                vinvestimento = investimento(vorcamento['ORC_CONSUMO'])
+                vcarbono = carbono(vorcamento['ORC_CONSUMO'])
+                vretorno = temporetorno(vorcamento['ORC_CONSUMO'],vorcamento['ORC_TE'],vorcamento['ORC_TUSD'],vinvestimento)
                 orcamento = Orcamentos(
-                    vorcamento['ORC_ID'],
+                    idorcamento,
                     vorcamento['ORC_NOME'],
                     vorcamento['ORC_CEP'],
-                    now.strftime("%d/%m/%Y %H:%M:%S"),
+                    now.strftime("%m/%d/%Y %H:%M:%S"),
                     vorcamento['ORC_EMAIL'],
                     vorcamento['ORC_TELEFONE'],
                     vorcamento['ORC_LAGITUDE'],
@@ -53,10 +67,14 @@ class OrcamentoController(Resource):
                     vorcamento['ORC_CONSUMO']
                 )
                 orcamento.update()
-            return {"message": "O dado foi inserido no banco de dados"}
+            jsn_resposta = [{
+                "Investimento": "O valor do investimento será R$ " +str(vinvestimento),
+                "Carbono": "Deixarão de ser emitidos "+str(vcarbono) +" Kg de carbono por mês",
+                "Retorno": "Serão necessários " +str(vretorno) +" meses para o investimento ter retorno financeiro" 
+            }],200
         except Exception as e:
-            jsn_resposta = {
+            jsn_resposta = [{
             "status": 0,
             "motivo": str(e)
-            }
-            return jsn_resposta
+            }]
+        return jsn_resposta
